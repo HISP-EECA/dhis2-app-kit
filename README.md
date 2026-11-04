@@ -61,7 +61,7 @@ browser, no jsdom and no renderer.
 
 ## Read before changing anything
 
-[`docs/design-basics.md`](docs/design-basics.md). Ten applications depend on
+[`docs/design-basics.md`](docs/design-basics.md). Applications depend on
 these decisions; keeping them aligned is the point of the package. If an app
 needs a component the kit does not have, the kit probably needs it.
 
@@ -76,7 +76,7 @@ Two rules that cost real time to learn:
 
 ## Releasing
 
-Ten apps consume this, so a bad release reaches all of them.
+Apps consume this, so a bad release reaches all of them.
 
 ```bash
 npm test && npm run build
