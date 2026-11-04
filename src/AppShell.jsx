@@ -26,7 +26,7 @@ import LanguageSelect from './LanguageSelect.jsx'
 import VersionBanner from './VersionBanner.jsx'
 import { useApp } from './context.jsx'
 
-export default function AppShell({ chrome = true, tabs, current, onTab, profileLocale, children }) {
+export default function AppShell({ chrome = true, tabs, current, onTab, profileLocale, actions, children }) {
   const app = useApp()
 
   if (!chrome) {
@@ -36,7 +36,7 @@ export default function AppShell({ chrome = true, tabs, current, onTab, profileL
 
   return (
     <div style={{ padding: 24, maxWidth: 1100, fontSize: 14, color: '#212934' }}>
-      <Header app={app} profileLocale={profileLocale} />
+      <Header app={app} profileLocale={profileLocale} actions={actions} />
       <VersionBanner />
       {tabs?.length > 1 && <Tabs tabs={tabs} current={current} onChange={onTab} />}
       {children}
@@ -45,7 +45,7 @@ export default function AppShell({ chrome = true, tabs, current, onTab, profileL
   )
 }
 
-function Header({ app, profileLocale }) {
+function Header({ app, profileLocale, actions }) {
   return (
     <header
       style={{
@@ -61,10 +61,13 @@ function Header({ app, profileLocale }) {
         <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>{app.title}</h1>
         <p style={{ margin: '2px 0 0', color: '#4a5768' }}>{i18n.t(app.subtitle)}</p>
       </div>
+      {/* The organisation and the licence are in the footer, where
+          provenance belongs. Repeating the link here was decoration: it
+          took the most valuable space on the screen and told the reader
+          nothing they needed while working. The header carries only what
+          changes what the app does. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 'none' }}>
-        <a href={app.org.url} target="_blank" rel="noreferrer" style={{ color: '#1d5288' }}>
-          {app.org.name}
-        </a>
+        {actions}
         <LanguageSelect profileLocale={profileLocale} />
       </div>
     </header>
