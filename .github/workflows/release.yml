@@ -1,0 +1,37 @@
+name: Release
+
+# Publishes to npm when a release is published, or a v* tag is pushed.
+# prepublishOnly runs the build and the tests again, so a failing test
+# cannot reach ten applications.
+
+on:
+  release:
+    types: [published]
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - name: Keep package.json in step with the tag
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

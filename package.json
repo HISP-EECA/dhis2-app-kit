@@ -1,0 +1,29 @@
+{
+  "name": "@hisp-eeca/dhis2-app-kit",
+  "version": "0.1.0",
+  "description": "Shared shell, design system and DHIS2 helpers for HISP EECA applications",
+  "license": "BSD-3-Clause",
+  "author": "HISP EECA",
+  "repository": { "type": "git", "url": "https://github.com/hisp-eeca/dhis2-app-kit" },
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist", "docs", "LICENSE", "README.md"],
+  "exports": {
+    ".": "./dist/index.js",
+    "./logic": "./dist/logic/index.js"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/kit.test.mjs",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "peerDependencies": {
+    "@dhis2/app-runtime": ">=3.9",
+    "@dhis2/d2-i18n": ">=1.1",
+    "@dhis2/ui": ">=9",
+    "react": ">=17"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
