@@ -3,6 +3,10 @@
 The conventions a HISP EECA DHIS2 app follows, and why. Written before the
 template so the decisions are explicit rather than inherited by copying.
 
+> For step-by-step usage (initializing a new app or Capture plugin from scratch,
+> applying the kit to an existing app, considerations, and troubleshooting), see
+> [`README.md`](../README.md).
+
 Everything here is drawn from two apps that already work — Metadata Controller
 and PI Hell Exit — and the places they disagree are marked as decisions rather
 than smoothed over.
