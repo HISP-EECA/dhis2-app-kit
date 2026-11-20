@@ -22,11 +22,13 @@ The package exposes two entry points:
 
 | Category | Exports | Purpose |
 | --- | --- | --- |
-| **Shell** | `AppKitProvider`, `useApp`, `AppShell`, `LanguageSelect`, `VersionBanner` | Standard header, language switcher, stale-build detector, navigation tabs, and provenance footer. |
-| **Layout** | `Card`, `Section`, `SectionTitle`, `Step`, `Steps`, `Tabs`, `Hint` | Page structure: mode tabs, sequential step breadcrumbs, numbered stage cards, and unboxed content sections. |
-| **Rows & Lists** | `Collapsible`, `ItemRow`, `SelectionBar`, `TextAction`, `ACTION_CELL` | Unified disclosure groups, metadata item rows (checkbox or action, never both), and bulk selection controls. |
+| **Shell** | `AppKitProvider`, `useApp`, `AppShell`, `ErrorBoundary`, `LanguageSelect`, `VersionBanner` | Standard header, language switcher, stale-build detector, navigation tabs, screen error boundary, and provenance footer. |
+| **Layout** | `Card`, `Section`, `SectionTitle`, `Step`, `Steps`, `Tabs`, `Hint`, `Verdict` | Page structure: mode tabs, sequential step breadcrumbs, numbered stage cards, unboxed content sections, and strict outcome notices. |
+| **Rows and Lists** | `Collapsible`, `ItemRow`, `SelectionBar`, `TextAction`, `ACTION_CELL` | Unified disclosure groups, metadata item rows (checkbox or action, never both), and bulk selection controls. |
 | **Progress** | `useProgress`, `BusyScreen`, `ProgressLog`, `LogPanel` | Multi-step progress log where completed steps freeze with `✓` and the active step counts live, plus dark panel for server logs. |
-| **`/logic`** | `SchemaService`, `ALWAYS_STRIP`, `LOCAL_CONTEXT_FIELDS`, `USER_LOCAL_FIELDS`, `queryInBatches`, `mapLimit`, `chunk`, `isTooLong`, `BATCH`, `LIMIT`, `shellIsStale`, `probeShell`, `readCacheHeaders`, `forceFresh`, `scriptsIn`, `clearStaleWorkers`, `resolveLanguage`, `languageKey` | Live `/api/schemas` inspection (with synthetic fallbacks for 2.40–2.42), concurrent UID batching with automatic HTTP 414 splitting, cache/service-worker probing, and locale resolution. |
+| **`/logic`** | `SchemaService`, `ALWAYS_STRIP`, `LOCAL_CONTEXT_FIELDS`, `USER_LOCAL_FIELDS`, `queryInBatches`, `mapLimit`, `chunk`, `isTooLong`, `BATCH`, `LIMIT`, `shellIsStale`, `scopeMatchesApp`, `probeShell`, `readCacheHeaders`, `forceFresh`, `scriptsIn`, `clearStaleWorkers`, `resolveLanguage`, `languageKey` | Live `/api/schemas` inspection (with synthetic fallbacks for 2.40-2.42), concurrent UID batching with automatic HTTP 414 splitting and `AbortSignal` cancellation, cache/service-worker probing, and locale resolution. |
+
+See [`CHANGELOG.md`](CHANGELOG.md) for a plain-language summary of recent improvements and fixes.
 
 ---
 
@@ -264,6 +266,7 @@ export async function runAudit(engine, uids, onStep) {
   // -> 'indicators'
 
   // Fetch UIDs in batches of 250 with 8 concurrent requests; auto-splits on HTTP 414
+  // Pass an optional AbortController `signal` to cancel remaining batches early.
   const records = await queryInBatches(engine, {
     resource: 'indicators',
     fields: 'id,name,numerator,denominator',
@@ -348,7 +351,7 @@ Read [`docs/design-basics.md`](docs/design-basics.md) before modifying component
    `i18next` treats `:` as a namespace separator and the DHIS2 platform's scanner leaves `nsSeparator` at its default. A string like `i18n.t('Export blocked: 3 errors')` is silently truncated at the colon and never reaches the translation catalogue. Use a full stop (`.`) or an em dash (`—`) instead.
    > **Note for existing apps:** Changing English source strings to remove `:` will invalidate matching keys in existing `i18n/*.po` files until you update those keys in the `.po` files as well.
 2. **`ok` notice level has to be asked for explicitly:**
-   Never default an unknown or mistyped notice status to a green tick (`ok`). A 500 error announced with a green tick is worse than no message.
+   Never default an unknown or mistyped notice status to a green tick (`ok`). A 500 error announced with a green tick is worse than no message. Use `<Verdict level="ok" | "warning" | "error" title={...} items={...}>` to enforce both this rule and automatic hiding when `items` is empty.
 3. **Navigation: `Tabs` or `Steps`, never both at one level:**
    - `Tabs` are independent modes that can be entered in any order (*Run · Settings · History*).
    - `Steps` are a strict sequence (*Select › Required › Review › Export*).

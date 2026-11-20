@@ -14,6 +14,7 @@ export { resolveLanguage, languageKey } from './language.js'
 export { BATCH, LIMIT, mapLimit, chunk, isTooLong, queryInBatches } from './concurrency.js'
 export {
   scriptsIn,
+  scopeMatchesApp,
   shellIsStale,
   clearStaleWorkers,
   probeShell,

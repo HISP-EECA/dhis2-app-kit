@@ -6,14 +6,22 @@ import { resolveLanguage, languageKey } from "./logic/language.js";
 function LanguageSelect({ profileLocale }) {
   const app = useApp();
   const shipped = app.locales || [];
-  const [lang, setLang] = React.useState(() => {
-    let stored = null;
+  const readStored = () => {
     try {
-      stored = window.localStorage.getItem(languageKey(app.name));
+      return window.localStorage.getItem(languageKey(app.name));
     } catch {
+      return null;
     }
-    return resolveLanguage({ stored, profile: profileLocale, shipped });
-  });
+  };
+  const [lang, setLang] = React.useState(
+    () => resolveLanguage({ stored: readStored(), profile: profileLocale, shipped })
+  );
+  React.useEffect(() => {
+    const stored = readStored();
+    if (stored) return;
+    const next = resolveLanguage({ stored: null, profile: profileLocale, shipped });
+    setLang((prev) => prev === next ? prev : next);
+  }, [profileLocale, app.name, shipped]);
   React.useEffect(() => {
     i18n.changeLanguage(lang);
   }, [lang]);

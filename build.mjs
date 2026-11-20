@@ -11,8 +11,11 @@
  * "invalid hook call".
  */
 import { build } from 'esbuild'
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+
+// Clean dist so renamed or deleted source files are never published.
+rmSync('dist', { recursive: true, force: true })
 
 const entries = []
 const walk = (dir) => {

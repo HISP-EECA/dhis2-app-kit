@@ -19,6 +19,7 @@
  */
 
 import React from 'react'
+import { Button, NoticeBox } from '@dhis2/ui'
 import i18n from '@dhis2/d2-i18n'
 
 import { Tabs } from './ui.jsx'
@@ -26,12 +27,57 @@ import LanguageSelect from './LanguageSelect.jsx'
 import VersionBanner from './VersionBanner.jsx'
 import { useApp } from './context.jsx'
 
+function safeHref(url) {
+  if (!url || typeof url !== 'string') return null
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Contains unexpected render errors inside a screen or Capture plugin so
+ * they show an actionable notice instead of blanking the DHIS2 host page.
+ */
+export class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <NoticeBox error title={i18n.t('Something went wrong')}>
+          <div>{String(this.state.error?.message || this.state.error)}</div>
+          <div style={{ marginTop: 8 }}>
+            <Button small secondary onClick={() => this.setState({ error: null })}>
+              {i18n.t('Try again')}
+            </Button>
+          </div>
+        </NoticeBox>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export default function AppShell({ chrome = true, tabs, current, onTab, profileLocale, actions, children }) {
   const app = useApp()
 
   if (!chrome) {
     // Inside a host. No frame, no background, no width assumption.
-    return <div style={{ fontSize: 14, color: '#212934' }}>{children}</div>
+    return (
+      <div style={{ fontSize: 14, color: '#212934' }}>
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </div>
+    )
   }
 
   return (
@@ -39,7 +85,7 @@ export default function AppShell({ chrome = true, tabs, current, onTab, profileL
       <Header app={app} profileLocale={profileLocale} actions={actions} />
       <VersionBanner />
       {tabs?.length > 1 && <Tabs tabs={tabs} current={current} onChange={onTab} />}
-      {children}
+      <ErrorBoundary>{children}</ErrorBoundary>
       <Footer app={app} />
     </div>
   )
@@ -82,17 +128,26 @@ function Header({ app, profileLocale, actions }) {
  * answer is no. See docs/design-basics.md section 8.
  */
 function Footer({ app }) {
+  const orgHref = safeHref(app.org?.url)
+  const licenseHref = safeHref(app.licenseUrl)
   return (
     <footer style={{ marginTop: 40, color: '#6e7a8a', fontSize: 13 }}>
-      {app.title} {app.version} ·{' '}
-      {i18n.t('Developed by')}{' '}
-      <a href={app.org.url} target="_blank" rel="noreferrer" style={{ color: '#1d5288' }}>
-        {app.org.name}
-      </a>{' '}
+      {app.title} {app.version} · {i18n.t('Developed by')}{' '}
+      {orgHref ? (
+        <a href={orgHref} target="_blank" rel="noopener noreferrer" style={{ color: '#1d5288' }}>
+          {app.org.name}
+        </a>
+      ) : (
+        <span>{app.org?.name}</span>
+      )}{' '}
       ·{' '}
-      <a href={app.licenseUrl} target="_blank" rel="noreferrer" style={{ color: '#1d5288' }}>
-        {app.license}
-      </a>
+      {licenseHref ? (
+        <a href={licenseHref} target="_blank" rel="noopener noreferrer" style={{ color: '#1d5288' }}>
+          {app.license}
+        </a>
+      ) : (
+        <span>{app.license}</span>
+      )}
     </footer>
   )
 }

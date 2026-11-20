@@ -1,4 +1,5 @@
-function runningScripts(doc = document) {
+function runningScripts(doc = typeof document !== "undefined" ? document : null) {
+  if (!doc?.querySelectorAll) return /* @__PURE__ */ new Set();
   return new Set(
     [...doc.querySelectorAll("script[src]")].map((el) => el.getAttribute("src") || "").map(fileOf).filter(Boolean)
   );
@@ -15,8 +16,24 @@ function scriptsIn(html) {
   }
   return out;
 }
-async function shellIsStale(baseUrl, appName, doc = document) {
-  const url = `${String(baseUrl).replace(/\/$/, "")}/api/apps/${appName}/index.html`;
+function encodeAppName(appName) {
+  const clean = typeof appName === "string" ? appName.trim() : "";
+  return clean ? encodeURIComponent(clean) : null;
+}
+function scopeMatchesApp(scope, appName) {
+  const encoded = encodeAppName(appName);
+  if (!encoded) return false;
+  const text = String(scope || "");
+  const marker = `/api/apps/${encoded}`;
+  const idx = text.indexOf(marker);
+  if (idx === -1) return false;
+  const next = text[idx + marker.length];
+  return next === void 0 || next === "/" || next === "?" || next === "#";
+}
+async function shellIsStale(baseUrl, appName, doc = typeof document !== "undefined" ? document : null) {
+  const encoded = encodeAppName(appName);
+  if (!encoded) return { stale: false };
+  const url = `${String(baseUrl).replace(/\/$/, "")}/api/apps/${encoded}/index.html`;
   let html;
   try {
     const res = await fetch(url, { cache: "no-store", credentials: "include" });
@@ -37,24 +54,27 @@ async function shellIsStale(baseUrl, appName, doc = document) {
   return { stale: true, serving: servingHashed, running: [...running].filter(hashed) };
 }
 async function clearStaleWorkers(appName) {
+  const encoded = encodeAppName(appName);
+  if (!encoded) return 0;
   if (typeof navigator === "undefined" || !navigator.serviceWorker?.getRegistrations) return 0;
   let removed = 0;
   try {
     for (const reg of await navigator.serviceWorker.getRegistrations()) {
-      if (!String(reg.scope || "").includes(`/api/apps/${appName}`)) continue;
+      if (!scopeMatchesApp(reg.scope, appName)) continue;
       if (await reg.unregister()) removed++;
     }
     if (removed && typeof caches !== "undefined") {
       for (const key of await caches.keys()) {
-        if (key.includes(appName)) await caches.delete(key);
+        if (key.includes(appName) || key.includes(encoded)) await caches.delete(key);
       }
     }
   } catch {
   }
   return removed;
 }
-async function probeShell(baseUrl, appName, doc = document) {
-  const url = `${String(baseUrl).replace(/\/$/, "")}/api/apps/${appName}/index.html`;
+async function probeShell(baseUrl, appName, doc = typeof document !== "undefined" ? document : null) {
+  const encoded = encodeAppName(appName);
+  const url = encoded ? `${String(baseUrl).replace(/\/$/, "")}/api/apps/${encoded}/index.html` : "";
   const out = {
     url,
     running: [...runningScripts(doc)],
@@ -66,6 +86,10 @@ async function probeShell(baseUrl, appName, doc = document) {
     workers: [],
     error: null
   };
+  if (!encoded) {
+    out.error = "Missing app name";
+    return out;
+  }
   try {
     const res = await fetch(url, { cache: "no-store", credentials: "include" });
     out.cacheControl = res.headers.get("cache-control");
@@ -85,7 +109,7 @@ async function probeShell(baseUrl, appName, doc = document) {
   }
   try {
     if (navigator.serviceWorker?.getRegistrations) {
-      out.workers = (await navigator.serviceWorker.getRegistrations()).map((r) => String(r.scope || "")).filter((s) => s.includes(`/api/apps/${appName}`));
+      out.workers = (await navigator.serviceWorker.getRegistrations()).map((r) => String(r.scope || "")).filter((s) => scopeMatchesApp(s, appName));
     }
   } catch {
   }
@@ -117,10 +141,13 @@ function readCacheHeaders({ cacheControl, age }) {
   return { level: "ok", text: "index.html is revalidated on every request. An install takes effect immediately." };
 }
 async function forceFresh(appName) {
+  const encoded = encodeAppName(appName);
   await clearStaleWorkers(appName);
   try {
-    if (typeof caches !== "undefined") {
-      for (const key of await caches.keys()) await caches.delete(key);
+    if (encoded && typeof caches !== "undefined") {
+      for (const key of await caches.keys()) {
+        if (key.includes(appName) || key.includes(encoded)) await caches.delete(key);
+      }
     }
   } catch {
   }
@@ -133,6 +160,7 @@ export {
   forceFresh,
   probeShell,
   readCacheHeaders,
+  scopeMatchesApp,
   scriptsIn,
   shellIsStale
 };

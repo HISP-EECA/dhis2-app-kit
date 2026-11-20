@@ -39,7 +39,8 @@
  */
 
 /** Script URLs the running document loaded, as bare filenames. */
-function runningScripts(doc = document) {
+function runningScripts(doc = typeof document !== 'undefined' ? document : null) {
+  if (!doc?.querySelectorAll) return new Set()
   return new Set(
     [...doc.querySelectorAll('script[src]')]
       .map((el) => el.getAttribute('src') || '')
@@ -66,16 +67,38 @@ export function scriptsIn(html) {
   return out
 }
 
+function encodeAppName(appName) {
+  const clean = typeof appName === 'string' ? appName.trim() : ''
+  return clean ? encodeURIComponent(clean) : null
+}
+
+/**
+ * True when a service worker scope belongs to this specific app rather
+ * than another app whose name shares the same prefix.
+ */
+export function scopeMatchesApp(scope, appName) {
+  const encoded = encodeAppName(appName)
+  if (!encoded) return false
+  const text = String(scope || '')
+  const marker = `/api/apps/${encoded}`
+  const idx = text.indexOf(marker)
+  if (idx === -1) return false
+  const next = text[idx + marker.length]
+  return next === undefined || next === '/' || next === '?' || next === '#'
+}
+
 /**
  * Is the shell running in this tab older than the one the server holds?
  *
  * @returns {{stale: boolean, serving?: string[], running?: string[]}}
- *          stale is false whenever the question cannot be answered —
- *          a failed fetch, an index.html with no hashed scripts — because
+ *          stale is false whenever the question cannot be answered -
+ *          a failed fetch, an index.html with no hashed scripts - because
  *          a banner shown on a guess is worse than no banner.
  */
-export async function shellIsStale(baseUrl, appName, doc = document) {
-  const url = `${String(baseUrl).replace(/\/$/, '')}/api/apps/${appName}/index.html`
+export async function shellIsStale(baseUrl, appName, doc = typeof document !== 'undefined' ? document : null) {
+  const encoded = encodeAppName(appName)
+  if (!encoded) return { stale: false }
+  const url = `${String(baseUrl).replace(/\/$/, '')}/api/apps/${encoded}/index.html`
   let html
   try {
     const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
@@ -120,16 +143,18 @@ export async function shellIsStale(baseUrl, appName, doc = document) {
  * @returns the number of registrations removed
  */
 export async function clearStaleWorkers(appName) {
+  const encoded = encodeAppName(appName)
+  if (!encoded) return 0
   if (typeof navigator === 'undefined' || !navigator.serviceWorker?.getRegistrations) return 0
   let removed = 0
   try {
     for (const reg of await navigator.serviceWorker.getRegistrations()) {
-      if (!String(reg.scope || '').includes(`/api/apps/${appName}`)) continue
+      if (!scopeMatchesApp(reg.scope, appName)) continue
       if (await reg.unregister()) removed++
     }
     if (removed && typeof caches !== 'undefined') {
       for (const key of await caches.keys()) {
-        if (key.includes(appName)) await caches.delete(key)
+        if (key.includes(appName) || key.includes(encoded)) await caches.delete(key)
       }
     }
   } catch {
@@ -148,8 +173,9 @@ export async function clearStaleWorkers(appName) {
  * knew was there. Reading it off the response beats describing a curl
  * command to somebody over chat.
  */
-export async function probeShell(baseUrl, appName, doc = document) {
-  const url = `${String(baseUrl).replace(/\/$/, '')}/api/apps/${appName}/index.html`
+export async function probeShell(baseUrl, appName, doc = typeof document !== 'undefined' ? document : null) {
+  const encoded = encodeAppName(appName)
+  const url = encoded ? `${String(baseUrl).replace(/\/$/, '')}/api/apps/${encoded}/index.html` : ''
   const out = {
     url,
     running: [...runningScripts(doc)],
@@ -160,6 +186,11 @@ export async function probeShell(baseUrl, appName, doc = document) {
     date: null,
     workers: [],
     error: null,
+  }
+
+  if (!encoded) {
+    out.error = 'Missing app name'
+    return out
   }
 
   try {
@@ -184,7 +215,7 @@ export async function probeShell(baseUrl, appName, doc = document) {
     if (navigator.serviceWorker?.getRegistrations) {
       out.workers = (await navigator.serviceWorker.getRegistrations())
         .map((r) => String(r.scope || ''))
-        .filter((s) => s.includes(`/api/apps/${appName}`))
+        .filter((s) => scopeMatchesApp(s, appName))
     }
   } catch {
     /* a browser that will not say has nothing to say */
@@ -238,10 +269,14 @@ export function readCacheHeaders({ cacheControl, age }) {
  * never seen does.
  */
 export async function forceFresh(appName) {
+  const encoded = encodeAppName(appName)
   await clearStaleWorkers(appName)
   try {
-    if (typeof caches !== 'undefined') {
-      for (const key of await caches.keys()) await caches.delete(key)
+    if (encoded && typeof caches !== 'undefined') {
+      for (const key of await caches.keys()) {
+        // DHIS2 apps share one origin; only clear caches belonging to this app.
+        if (key.includes(appName) || key.includes(encoded)) await caches.delete(key)
+      }
     }
   } catch {
     /* nothing cached, or not allowed to look */

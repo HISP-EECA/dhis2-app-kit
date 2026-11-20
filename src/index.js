@@ -12,7 +12,7 @@
  */
 
 export { AppKitProvider, useApp } from './context.jsx'
-export { default as AppShell } from './AppShell.jsx'
+export { default as AppShell, ErrorBoundary } from './AppShell.jsx'
 export { default as LanguageSelect } from './LanguageSelect.jsx'
 export { resolveLanguage } from './logic/language.js'
 export { default as VersionBanner } from './VersionBanner.jsx'
@@ -32,6 +32,7 @@ export {
   LogPanel,
   ProgressLog,
   BusyScreen,
+  Verdict,
   useProgress,
   ACTION_CELL,
 } from './ui.jsx'

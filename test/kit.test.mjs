@@ -25,30 +25,73 @@ import assert from 'node:assert/strict'
 
 // --- the stale shell check --------------------------------------------
 {
-  const { scriptsIn } = await import('../src/logic/staleshell.js')
+  const { scriptsIn, scopeMatchesApp, shellIsStale } = await import('../src/logic/staleshell.js')
   const hashed = /-[A-Za-z0-9_-]{6,}\.(m?js)$/
 
   // Vite emits base64url, not hex. An earlier pattern looked for
   // lowercase hex and matched no DHIS2 bundle ever built, so the check
-  // silently never fired — the exact failure it exists to catch.
+  // silently never fired - the exact failure it exists to catch.
   assert.ok(hashed.test('main-eITxblpH.js'), 'no digits at all, still a hash')
   assert.ok(hashed.test('App-cWMNUEXw.js'))
   assert.ok(!hashed.test('polyfill.js'), 'an unhashed name says nothing')
   assert.equal(scriptsIn('<script src="a.js"></script><script src="b-AbC123xy.js">').size, 2)
-  console.log('  kit: the hash pattern matches what Vite actually emits')
+
+  // Service worker scope matching must not cross app name prefixes.
+  assert.equal(scopeMatchesApp('https://example.org/api/apps/meta/', 'meta'), true)
+  assert.equal(scopeMatchesApp('https://example.org/api/apps/meta', 'meta'), true)
+  assert.equal(scopeMatchesApp('https://example.org/api/apps/metadata-controller/', 'meta'), false)
+  assert.equal(scopeMatchesApp('https://example.org/api/apps/meta/', ''), false)
+
+  // Missing appName safely reports not stale without fetching.
+  assert.deepEqual(await shellIsStale('https://example.org', ''), { stale: false })
+  console.log('  kit: stale shell hashes and exact app scope matching')
 }
 
 // --- batching ---------------------------------------------------------
 {
-  const { chunk, isTooLong, BATCH } = await import('../src/logic/concurrency.js')
+  const { chunk, isTooLong, BATCH, mapLimit, queryInBatches } = await import('../src/logic/concurrency.js')
   assert.deepEqual(chunk([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]])
   assert.equal(chunk([], 2).length, 0)
   assert.ok(BATCH > 1 && BATCH <= 500)
-  // Tomcat caps the request line at 8KB, so a long id:in:[…] comes back
+  // Tomcat caps the request line at 8KB, so a long id:in:[...] comes back
   // as 414 and the batch has to be split rather than lost.
   assert.equal(isTooLong({ message: 'Request URI too long', details: { httpStatusCode: 414 } }), true)
   assert.equal(isTooLong({ message: 'Conflict', details: { httpStatusCode: 409 } }), false)
-  console.log('  kit: batches split on 414 rather than failing')
+
+  // AbortSignal stops starting new batches when cancelled.
+  const ac = new AbortController()
+  let ran = 0
+  await mapLimit(
+    [1, 2, 3, 4, 5],
+    1,
+    async (x) => {
+      ran++
+      if (x === 2) ac.abort()
+      return x
+    },
+    ac.signal
+  )
+  assert.equal(ran, 2, 'aborted mapLimit stops before starting remaining items')
+
+  const preAborted = new AbortController()
+  preAborted.abort()
+  let queried = 0
+  const fakeEngine = {
+    async query() {
+      queried++
+      return { r: { indicators: [{ id: 'a' }] } }
+    },
+  }
+  const empty = await queryInBatches(fakeEngine, {
+    resource: 'indicators',
+    fields: 'id',
+    uids: ['a', 'b'],
+    filterFor: (b) => `id:in:[${b.join(',')}]`,
+    signal: preAborted.signal,
+  })
+  assert.equal(queried, 0)
+  assert.deepEqual(empty, [])
+  console.log('  kit: batches split on 414 and respect AbortSignal cancellation')
 }
 
 // --- schema -----------------------------------------------------------
