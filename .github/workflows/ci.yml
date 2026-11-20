@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,6 +17,8 @@ jobs:
         with: { node-version: '20', cache: npm }
       - run: npm ci
       - run: npm run build
+      # Verify the compiled /logic entry point loads cleanly from dist/.
+      - run: node -e "import('./dist/logic/index.js')"
       # Ten applications depend on this package, so the tests run on
       # every push, not only on release.
       - run: npm test

@@ -105,7 +105,7 @@ export function SectionTitle({ children }) {
  * row where nobody knows which one commits.
  */
 
-import { Checkbox, CircularLoader } from '@dhis2/ui'
+import { Checkbox, CircularLoader, NoticeBox } from '@dhis2/ui'
 
 const RULE = '1px solid #e8edf2'
 
@@ -383,7 +383,7 @@ export function Card({ step, title, children, style }) {
   return (
     <section
       style={{
-        border: `1px solid ${RULE}`,
+        border: RULE,
         borderRadius: 4,
         background: '#fff',
         padding: 20,
@@ -411,7 +411,7 @@ export function Card({ step, title, children, style }) {
  */
 export function Tabs({ tabs, current, onChange }) {
   return (
-    <nav style={{ display: 'flex', gap: 24, borderBottom: `1px solid ${RULE}`, margin: '0 0 20px' }}>
+    <nav style={{ display: 'flex', gap: 24, borderBottom: RULE, margin: '0 0 20px' }}>
       {tabs.map(([key, label]) => {
         const on = key === current
         return (
@@ -520,7 +520,7 @@ export function SelectionBar({ selected, total, onSelectShown, onClearAll, onlyS
   )
 }
 
-/** Server output the app did not write — responses, SQL, import reports. */
+/** Server output the app did not write - responses, SQL, import reports. */
 export function LogPanel({ lines, height = 300 }) {
   const box = React.useRef(null)
   React.useEffect(() => {
@@ -547,5 +547,25 @@ export function LogPanel({ lines, height = 300 }) {
     >
       {(lines || []).join('\n')}
     </pre>
+  )
+}
+
+/**
+ * Outcome or finding notice enforcing two kit rules:
+ *   1. `ok` must be requested explicitly; any unknown or mistyped level
+ *      renders as an error rather than falling through to green.
+ *   2. When `items` is an array and empty, nothing is rendered.
+ */
+export function Verdict({ level, title, items, children, style }) {
+  if (Array.isArray(items) && items.length === 0) return null
+  const isOk = level === 'ok'
+  const isWarning = level === 'warning'
+  const isError = !isOk && !isWarning
+  return (
+    <div style={{ marginTop: 12, ...style }}>
+      <NoticeBox valid={isOk} warning={isWarning} error={isError} title={title}>
+        {children}
+      </NoticeBox>
+    </div>
   )
 }

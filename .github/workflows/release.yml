@@ -28,10 +28,11 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - name: Keep package.json in step with the tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
-          TAG="${{ github.event.release.tag_name || github.ref_name }}"
-          npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+          npm version "${RELEASE_TAG#v}" --no-git-tag-version --allow-same-version
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,5 +1,5 @@
 import { AppKitProvider, useApp } from "./context.js";
-import { default as default2 } from "./AppShell.js";
+import { default as default2, ErrorBoundary } from "./AppShell.js";
 import { default as default3 } from "./LanguageSelect.js";
 import { resolveLanguage } from "./logic/language.js";
 import { default as default4 } from "./VersionBanner.js";
@@ -18,6 +18,7 @@ import {
   LogPanel,
   ProgressLog,
   BusyScreen,
+  Verdict,
   useProgress,
   ACTION_CELL
 } from "./ui.js";
@@ -28,6 +29,7 @@ export {
   BusyScreen,
   Card,
   Collapsible,
+  ErrorBoundary,
   Hint,
   ItemRow,
   default3 as LanguageSelect,
@@ -40,6 +42,7 @@ export {
   Steps,
   Tabs,
   TextAction,
+  Verdict,
   default4 as VersionBanner,
   resolveLanguage,
   useApp,

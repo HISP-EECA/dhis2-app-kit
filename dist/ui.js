@@ -28,7 +28,7 @@ function Steps({ steps, current }) {
 function SectionTitle({ children }) {
   return /* @__PURE__ */ jsx("h3", { style: { fontSize: 15, fontWeight: 600, margin: "0 0 4px" }, children });
 }
-import { Checkbox, CircularLoader } from "@dhis2/ui";
+import { Checkbox, CircularLoader, NoticeBox } from "@dhis2/ui";
 const RULE = "1px solid #e8edf2";
 function TypeTag({ children }) {
   if (!children) return null;
@@ -214,7 +214,7 @@ function Card({ step, title, children, style }) {
     "section",
     {
       style: {
-        border: `1px solid ${RULE}`,
+        border: RULE,
         borderRadius: 4,
         background: "#fff",
         padding: 20,
@@ -232,7 +232,7 @@ function Card({ step, title, children, style }) {
   );
 }
 function Tabs({ tabs, current, onChange }) {
-  return /* @__PURE__ */ jsx("nav", { style: { display: "flex", gap: 24, borderBottom: `1px solid ${RULE}`, margin: "0 0 20px" }, children: tabs.map(([key, label]) => {
+  return /* @__PURE__ */ jsx("nav", { style: { display: "flex", gap: 24, borderBottom: RULE, margin: "0 0 20px" }, children: tabs.map(([key, label]) => {
     const on = key === current;
     return /* @__PURE__ */ jsx(
       "button",
@@ -344,6 +344,13 @@ function LogPanel({ lines, height = 300 }) {
     }
   );
 }
+function Verdict({ level, title, items, children, style }) {
+  if (Array.isArray(items) && items.length === 0) return null;
+  const isOk = level === "ok";
+  const isWarning = level === "warning";
+  const isError = !isOk && !isWarning;
+  return /* @__PURE__ */ jsx("div", { style: { marginTop: 12, ...style }, children: /* @__PURE__ */ jsx(NoticeBox, { valid: isOk, warning: isWarning, error: isError, title, children }) });
+}
 export {
   ACTION_CELL,
   BusyScreen,
@@ -360,5 +367,6 @@ export {
   Steps,
   Tabs,
   TextAction,
+  Verdict,
   useProgress
 };

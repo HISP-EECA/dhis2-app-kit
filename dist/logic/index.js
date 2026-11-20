@@ -3,6 +3,7 @@ import { resolveLanguage, languageKey } from "./language.js";
 import { BATCH, LIMIT, mapLimit, chunk, isTooLong, queryInBatches } from "./concurrency.js";
 import {
   scriptsIn,
+  scopeMatchesApp,
   shellIsStale,
   clearStaleWorkers,
   probeShell,
@@ -26,6 +27,7 @@ export {
   queryInBatches,
   readCacheHeaders,
   resolveLanguage,
+  scopeMatchesApp,
   scriptsIn,
   shellIsStale
 };
