@@ -1,13 +1,21 @@
 {
   "name": "@hisp-eeca/dhis2-app-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared shell, design system and DHIS2 helpers for HISP EECA applications",
   "license": "BSD-3-Clause",
   "author": "HISP EECA",
-  "repository": { "type": "git", "url": "https://github.com/hisp-eeca/dhis2-app-kit" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hisp-eeca/dhis2-app-kit"
+  },
   "type": "module",
   "sideEffects": false,
-  "files": ["dist", "docs", "LICENSE", "README.md"],
+  "files": [
+    "dist",
+    "docs",
+    "LICENSE",
+    "README.md"
+  ],
   "exports": {
     ".": "./dist/index.js",
     "./logic": "./dist/logic/index.js"
