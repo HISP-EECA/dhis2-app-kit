@@ -40,11 +40,11 @@ export default function VersionBanner() {
   return (
     <NoticeBox warning title={i18n.t('You are running an older version of this app')}>
       {i18n.t(
-        'A newer build is installed on this server, but this tab loaded a cached copy of the old build.'
+        'A newer build is installed on this server, but this tab loaded a cached copy of the old build. If the button below does not clear it, reload the page holding Shift \u2014 and if that does not either, the stale copy is being served from beyond this browser and only the server administrator can clear it.'
       )}
       <ButtonStrip style={{ marginTop: 8 }}>
         <Button small primary onClick={() => forceFresh(app.name)}>
-          {i18n.t('Load the current version')}
+          {i18n.t('Try to load the current version')}
         </Button>
         {!probe && (
           <Button small secondary onClick={async () => setProbe(await probeShell(baseUrl, app.name))}>
@@ -75,6 +75,11 @@ export default function VersionBanner() {
               running: probe.running.join(', ') || '—',
               serving: probe.serving.join(', ') || '—',
             })}
+          </div>
+          {/* Which document was compared. Without it, a check pointed at the
+              wrong URL looks identical to a cache that cannot be cleared. */}
+          <div style={{ marginTop: 4, color: '#6e7a8a', overflowWrap: 'anywhere' }}>
+            {i18n.t('compared against {{- url}}', { url: probe.url })}
           </div>
         </div>
       )}

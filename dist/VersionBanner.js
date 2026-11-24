@@ -21,10 +21,10 @@ function VersionBanner() {
   const headers = probe ? readCacheHeaders(probe) : null;
   return /* @__PURE__ */ jsxs(NoticeBox, { warning: true, title: i18n.t("You are running an older version of this app"), children: [
     i18n.t(
-      "A newer build is installed on this server, but this tab loaded a cached copy of the old build."
+      "A newer build is installed on this server, but this tab loaded a cached copy of the old build. If the button below does not clear it, reload the page holding Shift \u2014 and if that does not either, the stale copy is being served from beyond this browser and only the server administrator can clear it."
     ),
     /* @__PURE__ */ jsxs(ButtonStrip, { style: { marginTop: 8 }, children: [
-      /* @__PURE__ */ jsx(Button, { small: true, primary: true, onClick: () => forceFresh(app.name), children: i18n.t("Load the current version") }),
+      /* @__PURE__ */ jsx(Button, { small: true, primary: true, onClick: () => forceFresh(app.name), children: i18n.t("Try to load the current version") }),
       !probe && /* @__PURE__ */ jsx(Button, { small: true, secondary: true, onClick: async () => setProbe(await probeShell(baseUrl, app.name)), children: i18n.t("Why?") })
     ] }),
     probe && /* @__PURE__ */ jsxs("div", { style: { marginTop: 12, fontSize: 13 }, children: [
@@ -43,7 +43,8 @@ function VersionBanner() {
       /* @__PURE__ */ jsx("div", { style: { marginTop: 4, color: "#6e7a8a", overflowWrap: "anywhere" }, children: i18n.t("running {{- running}} \xB7 served {{- serving}}", {
         running: probe.running.join(", ") || "\u2014",
         serving: probe.serving.join(", ") || "\u2014"
-      }) })
+      }) }),
+      /* @__PURE__ */ jsx("div", { style: { marginTop: 4, color: "#6e7a8a", overflowWrap: "anywhere" }, children: i18n.t("compared against {{- url}}", { url: probe.url }) })
     ] })
   ] });
 }

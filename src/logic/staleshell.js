@@ -48,6 +48,34 @@ function runningScripts(doc = document) {
   )
 }
 
+/**
+ * The URL of the document that is actually running, without query or hash.
+ *
+ * NOT `${baseUrl}/api/apps/<name>/index.html`, which is what this used to
+ * build. That path is where DHIS2 served apps when this was written; under
+ * the Global Shell introduced in 2.41 an app is served through the shell's
+ * own route, and the legacy path can go on returning an older copy that
+ * nothing you install will ever update.
+ *
+ * Comparing a running document against a different URL's document is not a
+ * staleness check at all - it reports a difference between two addresses as
+ * though it were a difference between two versions, and no reinstall can
+ * ever clear it. Refetching this document's own address is the only
+ * comparison that means what it claims to mean.
+ */
+export function selfUrl(doc = document) {
+  const href = doc?.baseURI || (typeof window !== 'undefined' ? window.location?.href : '')
+  if (!href) return ''
+  try {
+    const u = new URL(href)
+    u.search = ''
+    u.hash = ''
+    return u.toString()
+  } catch {
+    return ''
+  }
+}
+
 function fileOf(src) {
   const path = String(src).split('?')[0].split('#')[0]
   return path.split('/').pop() || ''
@@ -75,7 +103,8 @@ export function scriptsIn(html) {
  *          a banner shown on a guess is worse than no banner.
  */
 export async function shellIsStale(baseUrl, appName, doc = document) {
-  const url = `${String(baseUrl).replace(/\/$/, '')}/api/apps/${appName}/index.html`
+  const url = selfUrl(doc)
+  if (!url) return { stale: false }
   let html
   try {
     const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
@@ -103,10 +132,22 @@ export async function shellIsStale(baseUrl, appName, doc = document) {
   const servingHashed = [...serving].filter(hashed)
   if (!servingHashed.length) return { stale: false }
 
+  const runningHashed = [...running].filter(hashed)
   const missing = servingHashed.filter((f) => !running.has(f))
   if (!missing.length) return { stale: false }
 
-  return { stale: true, serving: servingHashed, running: [...running].filter(hashed) }
+  // Behind means a SUBSET: everything this tab runs is still served, and the
+  // server has more. If this tab is running something the server does not
+  // serve, the two documents are not two versions of one thing and which is
+  // newer cannot be known - so say nothing. Without this, an app served from
+  // somewhere other than the fetched URL reported "stale" permanently, and
+  // every reinstall changed the running hash while the fetched one sat
+  // still, which looked exactly like a cache that could not be cleared.
+  const servedSet = new Set(servingHashed)
+  const extra = runningHashed.filter((f) => !servedSet.has(f))
+  if (extra.length) return { stale: false, ambiguous: true, serving: servingHashed, running: runningHashed }
+
+  return { stale: true, serving: servingHashed, running: runningHashed }
 }
 
 /**
@@ -149,7 +190,7 @@ export async function clearStaleWorkers(appName) {
  * command to somebody over chat.
  */
 export async function probeShell(baseUrl, appName, doc = document) {
-  const url = `${String(baseUrl).replace(/\/$/, '')}/api/apps/${appName}/index.html`
+  const url = selfUrl(doc)
   const out = {
     url,
     running: [...runningScripts(doc)],
@@ -174,7 +215,10 @@ export async function probeShell(baseUrl, appName, doc = document) {
       const hashed = (f) => /-[A-Za-z0-9_-]{6,}\.(m?js)$/.test(f)
       const want = out.serving.filter(hashed)
       const have = new Set(out.running)
-      out.stale = want.length > 0 && want.some((f) => !have.has(f))
+      const servedSet = new Set(want)
+      const extra = out.running.filter((f) => hashed(f) && !servedSet.has(f))
+      out.ambiguous = extra.length > 0
+      out.stale = !out.ambiguous && want.length > 0 && want.some((f) => !have.has(f))
     }
   } catch (e) {
     out.error = String(e?.message || e)

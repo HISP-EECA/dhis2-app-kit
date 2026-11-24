@@ -76,3 +76,44 @@ import assert from 'node:assert/strict'
 }
 
 console.log('\nall kit tests passed')
+
+/* ---- a running shell is compared against its OWN document, not a guess ---- */
+{
+  const { shellIsStale } = await import('../src/logic/staleshell.js')
+
+  const docWith = (srcs) => ({
+    baseURI: 'https://x.org/eye-care-ke/apps/metadata-controller/index.html?fresh=1#/export',
+    querySelectorAll: () => srcs.map((s) => ({ getAttribute: () => s })),
+  })
+
+  const serve = (srcs) => {
+    globalThis.fetch = async (url) => {
+      // The URL asked for must be this document's own, with query and hash
+      // stripped - not a constructed /api/apps/<name>/index.html.
+      assert.equal(url, 'https://x.org/eye-care-ke/apps/metadata-controller/index.html')
+      return { ok: true, text: async () => srcs.map((s) => `<script src="${s}"></script>`).join('') }
+    }
+  }
+
+  // Genuinely behind: what runs is a subset of what is served.
+  serve(['./main-NEWNEWNE.js', './vendor-AAAAAAAA.js'])
+  let r = await shellIsStale('https://x.org/eye-care-ke', 'metadata-controller', docWith(['./vendor-AAAAAAAA.js']))
+  assert.equal(r.stale, true, 'a tab missing a served bundle is behind')
+
+  // Current: the same bundles both sides.
+  serve(['./main-NEWNEWNE.js'])
+  r = await shellIsStale('https://x.org/eye-care-ke', 'metadata-controller', docWith(['./main-NEWNEWNE.js']))
+  assert.equal(r.stale, false, 'identical bundles are not stale')
+
+  // Ambiguous: this tab runs something the fetched document does not name.
+  // Which is newer cannot be known, so nothing is claimed. This is the case
+  // that reported "stale" forever on an instance serving the app from a
+  // different path than the one the check used to construct.
+  serve(['./main-DBaOIGQO.js'])
+  r = await shellIsStale('https://x.org/eye-care-ke', 'metadata-controller', docWith(['./main-CxCgeQ74.js']))
+  assert.equal(r.stale, false, 'a difference in both directions is not evidence of being behind')
+  assert.equal(r.ambiguous, true, 'and is reported as ambiguous rather than silently ignored')
+
+  delete globalThis.fetch
+  console.log('  kit: staleness is measured against the document’s own URL, and refuses to guess')
+}
